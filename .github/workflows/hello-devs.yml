@@ -1,133 +1,42 @@
-name: Draw HELLO DEVS
+name: Randomize contributions
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  draw:
+  randomize:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Draw contribution art
+      - name: Add random daily contributions
         shell: bash
         run: |
-          if [ -f HELLO_DEVS_DONE ]; then
-            echo "HELLO DEVS already generated."
-            exit 0
-          fi
-
           git config user.name "Jayasuryamahadevan"
           git config user.email "jayasuryamahadevan@gmail.com"
 
           python3 - <<'PY'
           import os
+          import random
           import subprocess
           from datetime import date, datetime, time, timedelta, timezone
 
-          TEXT = "HELLO DEVS"
-          COMMITS_PER_PIXEL = 10
+          rng = random.Random(724193)
 
-          FONT = {
-              "H": [
-                  "#..#",
-                  "#..#",
-                  "#..#",
-                  "####",
-                  "#..#",
-                  "#..#",
-                  "#..#",
-              ],
-              "E": [
-                  "####",
-                  "#...",
-                  "#...",
-                  "###.",
-                  "#...",
-                  "#...",
-                  "####",
-              ],
-              "L": [
-                  "#...",
-                  "#...",
-                  "#...",
-                  "#...",
-                  "#...",
-                  "#...",
-                  "####",
-              ],
-              "O": [
-                  ".##.",
-                  "#..#",
-                  "#..#",
-                  "#..#",
-                  "#..#",
-                  "#..#",
-                  ".##.",
-              ],
-              "D": [
-                  "###.",
-                  "#..#",
-                  "#..#",
-                  "#..#",
-                  "#..#",
-                  "#..#",
-                  "###.",
-              ],
-              "V": [
-                  "#..#",
-                  "#..#",
-                  "#..#",
-                  "#..#",
-                  "#..#",
-                  ".##.",
-                  ".##.",
-              ],
-              "S": [
-                  ".###",
-                  "#...",
-                  "#...",
-                  ".##.",
-                  "...#",
-                  "...#",
-                  "###.",
-              ],
-          }
+          end_day = date.today() - timedelta(days=1)
+          start_day = end_day - timedelta(days=364)
 
-          pixels = set()
-          x = 0
-
-          for char in TEXT:
-              if char == " ":
-                  x += 3
-                  continue
-
-              pattern = FONT[char]
-              for y, row in enumerate(pattern):
-                  for dx, cell in enumerate(row):
-                      if cell == "#":
-                          pixels.add((x + dx, y))
-              x += 5
-
-          width = max(px for px, _ in pixels) + 1
-
-          today = date.today()
-          days_since_sunday = (today.weekday() + 1) % 7
-          this_sunday = today - timedelta(days=days_since_sunday)
-          end_sunday = this_sunday - timedelta(days=7)
-          start_sunday = end_sunday - timedelta(weeks=width - 1)
-
-          for x, y in sorted(pixels):
-              commit_day = start_sunday + timedelta(weeks=x, days=y)
+          day = start_day
+          while day <= end_day:
+              count = rng.randint(20, 70)
               stamp = datetime.combine(
-                  commit_day,
+                  day,
                   time(12, 0),
                   tzinfo=timezone.utc,
               ).isoformat()
@@ -136,33 +45,25 @@ jobs:
               env["GIT_AUTHOR_DATE"] = stamp
               env["GIT_COMMITTER_DATE"] = stamp
 
-              for n in range(COMMITS_PER_PIXEL):
+              for _ in range(count):
+                  number = rng.randint(100000, 999999999)
                   subprocess.run(
                       [
                           "git",
                           "commit",
                           "--allow-empty",
                           "-m",
-                          f"HELLO DEVS pixel {x}-{y}-{n+1}",
+                          str(number),
                       ],
                       check=True,
                       env=env,
                       stdout=subprocess.DEVNULL,
                   )
 
-          with open("HELLO_DEVS_DONE", "w", encoding="utf-8") as f:
-              f.write(
-                  f"HELLO DEVS contribution art generated across {width} weeks.\n"
-                  f"Start: {start_sunday.isoformat()}\n"
-                  f"End week: {end_sunday.isoformat()}\n"
-                  f"Commits per pixel: {COMMITS_PER_PIXEL}\n"
-              )
-
-          subprocess.run(["git", "add", "HELLO_DEVS_DONE"], check=True)
-          subprocess.run(
-              ["git", "commit", "-m", "Complete HELLO DEVS contribution art"],
-              check=True,
-          )
+              day += timedelta(days=1)
           PY
 
+          git rm -f HELLO_DEVS_DONE || true
+          git rm -f .github/workflows/hello-devs.yml || true
+          git commit -m "84729163"
           git push origin HEAD:main
